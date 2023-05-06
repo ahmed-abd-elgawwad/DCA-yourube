@@ -37,6 +37,7 @@ if file:
         # show data
         """sample of data"""
         st.write(df.head())
+        st.write(df.dtypes)
     # if the data was only one well
     if type == "One_Well":
         # if multiwells so choose the well
