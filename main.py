@@ -1,36 +1,74 @@
 import streamlit as st
 import pandas as pd
-from dca_oop import  ARPS
-# title
-st.write("# DCA `ARP's model`")
+import plotly_express as px
+from dca_oop import ARPS
+st.title("Decline Curve Analysis")
+"""An app to make Decline curve analysis using ARP's models for conventional reservoirs.
+- Upload your data 
+- Specify is it field or only one well data 
+- Choose the right parameters 
+- The result will whow
+"""
+# ------------------------ side bar -------------------------
+st.sidebar.markdown("## Data Input `Production data`")
+file = st.sidebar.file_uploader("Upload Data file",type=["CSV"])
+# check if the file is uploaded
 
-# sidebar seciton
-st.sidebar.write("# User Inputs")
-file = st.sidebar.file_uploader("Upload file",type=["csv"])
 if file:
-#     try:
-    df = pd.read_csv(file)
-    cols = list(df.columns)
-    production_col = st.sidebar.selectbox("production column",cols)
-    date_col = st.sidebar.selectbox("date column",cols)
-    freq = st.sidebar.selectbox("date frequency",[ "Daily" , "Monthly" , "Yearly" ])
+    # try:
+    @st.cache
+    def upload_file(file):
+        df = pd.read_csv( file , parse_dates=True )
+        return df
+    df = upload_file(file)
+    #check wheter the data if for one well or multiwell
+    type = st.sidebar.selectbox("Type of data",["One_Well","Filed_Data"])
+    if type == "Filed_Data":
 
-    # smoothing the data
-    arps = ARPS(df,production_col,date_col)
-    st.write("#### Smooting the data `Moving Average` ")
-    window_size = st.slider("Window size in MA",min_value=10,max_value=500,step=10)
-    arps.smooth(window_size,3,True)
-    d = arps.prepocess_date_col(freq)
-    st.line_chart(d[[production_col,production_col+"_rol_Av"]])
+        # if multiwells so choose the well
+        col = st.sidebar.selectbox("Wells_name_column",list(df.columns),index=0)
+        well = st.sidebar.selectbox("Which well?",list(df[col].unique()),index=1)
+        Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=2)
+        date = st.sidebar.selectbox("Date column",list(df.columns))
+        freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
+        # the final df of the well
+        df = df[df[col] == well]
+        arps_model = ARPS(df,Q_col,date)
+        # show data
+        """sample of data"""
+        st.write(df.head())
+    # if the data was only one well
+    if type == "One_Well":
+        # if multiwells so choose the well
+        Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=0)
+        date = st.sidebar.selectbox("Date column",list(df.columns),index=1)
+        freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
+        # the final df of the well
+        df = df[[date,Q_col]]
+        arps_model = ARPS(df, Q_col, date)
+        # show data
+        """sample of data"""
+        st.write(df.head())
 
-    # fitting the data
-    st.write("### Fitting data `All ARP's models`")
-    params, data  = arps.fit_all_models()
-    st.line_chart(data)
-    st.write(params)
-#     except:
-#         st.error("make sure you entered the data right")
+    """## Smoothing the data using moving average"""
+    window = st.slider("Window size",min_value=10,max_value=200,value= 100)
+    std = st.slider("Removing outliers",min_value=1,max_value=10,value=3)
+    df_smoothed = arps_model.smooth(window_size=window,stds=std,trim=True)
+    Q_smoothed= Q_col+"_rol_Av"
+    df2= df_smoothed[[date,Q_col,Q_smoothed]]
+    fig = px.line(df2,x=date,y=[Q_col,Q_smoothed])
+    st.plotly_chart(fig,use_container_width=True)
 
-
-
-
+    # preprocess the data column
+    arps_model.prepocess_date_col(frequency=freq)
+    # show all line
+    """## ARP's models fitted"""
+    # fit all the model
+    parameters , Qs = arps_model.fit_all_models()
+    fig = px.line(Qs,x="Time",y=["Original_Smoothed","Exponential","Harmonic","Hyperbolic"])
+    st.plotly_chart(fig,use_container_width=True)
+    """#### Models parameters"""
+    st.table(parameters)
+    st.success('Made with love'+'\u2764\ufe0f'+' Ahmed Elsayed')
+    # except:
+    #     st.error("Make sure you choosed the right parameters")
