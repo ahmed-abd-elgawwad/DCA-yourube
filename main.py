@@ -15,64 +15,64 @@ file = st.sidebar.file_uploader("Upload Data file",type=["CSV"])
 # check if the file is uploaded
 
 if file:
-    # try:
-    @st.cache
-    def upload_file(file):
-        df = pd.read_csv( file , parse_dates=True )
-        return df
-    df = upload_file(file)
-    #check wheter the data if for one well or multiwell
-    type = st.sidebar.selectbox("Type of data",["One_Well","Filed_Data"])
-    if type == "Filed_Data":
+    try:
+        @st.cache
+        def upload_file(file):
+            df = pd.read_csv( file , parse_dates=True )
+            return df
+        df = upload_file(file)
+        #check wheter the data if for one well or multiwell
+        type = st.sidebar.selectbox("Type of data",["One_Well","Filed_Data"])
+        if type == "Filed_Data":
 
-        # if multiwells so choose the well
-        col = st.sidebar.selectbox("Wells_name_column",list(df.columns),index=0)
-        well = st.sidebar.selectbox("Which well?",list(df[col].unique()),index=1)
-        Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=2)
-        date = st.sidebar.selectbox("Date column",list(df.columns))
-        freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
-        # the final df of the well
-        df = df[df[col] == well]
-        df[Q_col] = df[Q_col].astype(float)
-        arps_model = ARPS(df,Q_col,date)
-        # show data
-        """sample of data"""
-        st.write(df.head())
-        st.write(df.dtypes)
-    # if the data was only one well
-    if type == "One_Well":
-        # if multiwells so choose the well
-        Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=0)
-        date = st.sidebar.selectbox("Date column",list(df.columns),index=1)
-        freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
-        # the final df of the well
-        df = df[[date,Q_col]]
-        df[Q_col] = df[Q_col].astype(float)
-        arps_model = ARPS(df, Q_col, date)
-        # show data
-        """sample of data"""
-        st.write(df.head())
-        st.write(df.dtypes)
+            # if multiwells so choose the well
+            col = st.sidebar.selectbox("Wells_name_column",list(df.columns),index=0)
+            well = st.sidebar.selectbox("Which well?",list(df[col].unique()),index=1)
+            Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=2)
+            date = st.sidebar.selectbox("Date column",list(df.columns))
+            freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
+            # the final df of the well
+            df = df[df[col] == well]
+            df[Q_col] = df[Q_col].astype(float)
+            arps_model = ARPS(df,Q_col,date)
+            # show data
+            """sample of data"""
+            st.write(df.head())
+            st.write(df.dtypes)
+        # if the data was only one well
+        if type == "One_Well":
+            # if multiwells so choose the well
+            Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=0)
+            date = st.sidebar.selectbox("Date column",list(df.columns),index=1)
+            freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
+            # the final df of the well
+            df = df[[date,Q_col]]
+            df[Q_col] = df[Q_col].astype(float)
+            arps_model = ARPS(df, Q_col, date)
+            # show data
+            """sample of data"""
+            st.write(df.head())
+            st.write(df.dtypes)
 
-    """## Smoothing the data using moving average"""
-    window = st.slider("Window size",min_value=10,max_value=200,value= 100)
-    std = st.slider("Removing outliers",min_value=1,max_value=10,value=3)
-    df_smoothed = arps_model.smooth(window_size=window,stds=std,trim=True)
-    Q_smoothed= Q_col+"_rol_Av"
-    df2= df_smoothed[[date,Q_col,Q_smoothed]]
-    fig = px.line(df2,x=date,y=[Q_col,Q_smoothed])
-    st.plotly_chart(fig,use_container_width=True)
+        """## Smoothing the data using moving average"""
+        window = st.slider("Window size",min_value=10,max_value=200,value= 100)
+        std = st.slider("Removing outliers",min_value=1,max_value=10,value=3)
+        df_smoothed = arps_model.smooth(window_size=window,stds=std,trim=True)
+        Q_smoothed= Q_col+"_rol_Av"
+        df2= df_smoothed[[date,Q_col,Q_smoothed]]
+        fig = px.line(df2,x=date,y=[Q_col,Q_smoothed])
+        st.plotly_chart(fig,use_container_width=True)
 
-    # preprocess the data column
-    arps_model.prepocess_date_col(frequency=freq)
-    # show all line
-    """## ARP's models fitted"""
-    # fit all the model
-    parameters , Qs = arps_model.fit_all_models()
-    fig = px.line(Qs,x="Time",y=["Original_Smoothed","Exponential","Harmonic","Hyperbolic"])
-    st.plotly_chart(fig,use_container_width=True)
-    """#### Models parameters"""
-    st.table(parameters)
-    st.success('Made with love'+'\u2764\ufe0f'+' Ahmed Elsayed')
-    # except:
-    #     st.error("Make sure you choosed the right parameters")
+        # preprocess the data column
+        arps_model.prepocess_date_col(frequency=freq)
+        # show all line
+        """## ARP's models fitted"""
+        # fit all the model
+        parameters , Qs = arps_model.fit_all_models()
+        fig = px.line(Qs,x="Time",y=["Original_Smoothed","Exponential","Harmonic","Hyperbolic"])
+        st.plotly_chart(fig,use_container_width=True)
+        """#### Models parameters"""
+        st.table(parameters)
+        st.success('Made with love'+'\u2764\ufe0f'+' Ahmed Elsayed')
+    except:
+        st.error("Make sure you choosed the right parameters")
