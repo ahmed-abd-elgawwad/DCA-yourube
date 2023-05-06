@@ -2,3 +2,4 @@ pandas
 streamlit
 numpy
 scipy
+plotly_express
