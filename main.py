@@ -33,6 +33,7 @@ if file:
         freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
         # the final df of the well
         df = df[df[col] == well]
+        df[Q_col] = df[Q_col].astype(float)
         arps_model = ARPS(df,Q_col,date)
         # show data
         """sample of data"""
@@ -46,6 +47,7 @@ if file:
         freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
         # the final df of the well
         df = df[[date,Q_col]]
+        df[Q_col] = df[Q_col].astype(float)
         arps_model = ARPS(df, Q_col, date)
         # show data
         """sample of data"""
