@@ -107,7 +107,7 @@ class ARPS:
             maxi_index = (result[result[self.q + '_rol_Av'] == maxi].index.values)[0]
             result = result.iloc[maxi_index:, :].reset_index(drop=True)
         self.df = result
-
+        return self.df
 
     def prepocess_date_col(self,frequency = "Daily"):
         """
@@ -115,19 +115,18 @@ class ARPS:
         frequency : the frequency of the production data taken [ Daily , Monthly , Yearly ]
         """
         self.df[self.date] = pd.to_datetime(self.df[self.date])
-        self.df[f"Time [{frequency}]"] = (self.df[self.date] - self.df[self.date].iloc[0])
+        self.df["Time [{frequency}]"] = (self.df[self.date] - self.df[self.date].iloc[0])
         if frequency == "Daily":
-            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"] / np.timedelta64(1, 'D')
-            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"].astype(int)
+            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"] / np.timedelta64(1, 'D')
+            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"].astype(int)
         elif frequency == "Monthly":
-            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"] / np.timedelta64(1, 'M')
-            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"].astype(int)
+            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"] / np.timedelta64(1, 'M')
+            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"].astype(int)
         elif frequency == "Yearly":
-            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"] / np.timedelta64(1, 'Y')
-            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"].astype(int)
-        self.T = self.df[f"Time [{frequency}]"]
+            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"] / np.timedelta64(1, 'Y')
+            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"].astype(int)
+        self.T = self.df["Time [{frequency}]"]
         self.Q = self.df[self.q + '_rol_Av']
-        return self.df
 
     def fit_exponential(self):
          """
@@ -167,13 +166,13 @@ class ARPS:
         hp , qhp= self.fit_hyperbolic()
         hr , qhr = self.fit_harmonic()
         all_params = [ex, hp, hr]
-        data_info =pd.DataFrame( {
+        data_info = {
             "Model": [i[-1] for i in all_params],
             "Qi": [i[0] for i in all_params],
             "Di": [i[1] for i in all_params],
             "b": [i[2] for i in all_params],
             "Normalized RMSE": [i[3] for i in all_params],
-        })
+        }
         Qs = pd.DataFrame({
             "Time": self.T,
             "Original_Smoothed": self.Q,
@@ -181,5 +180,4 @@ class ARPS:
             "Hyperbolic": qhp,
             "Harmonic": qhr
         })
-        Qs.set_index("Time",inplace=True)
         return data_info , Qs
