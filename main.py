@@ -49,6 +49,7 @@ if file:
         # show data
         """sample of data"""
         st.write(df.head())
+        st.write(df.dtypes)
 
     """## Smoothing the data using moving average"""
     window = st.slider("Window size",min_value=10,max_value=200,value= 100)
