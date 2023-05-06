@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly_express as px
 from dca_oop import ARPS
-st.set_config(page_title="DCA")
+st.set_page_config(page_title="DCA")
 st.title("Decline Curve Analysis")
 """An app to make Decline curve analysis using ARP's models for conventional reservoirs.
 - Upload your data 
