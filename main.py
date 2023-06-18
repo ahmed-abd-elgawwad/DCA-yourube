@@ -32,6 +32,8 @@ if file:
             Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=2)
             date = st.sidebar.selectbox("Date column",list(df.columns))
             freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
+            # parse data column
+            df[date] = pd.to_datetime(df[date])
             # the final df of the well
             df = df[df[col] == well]
             df[Q_col] = df[Q_col].astype(float)
@@ -46,6 +48,8 @@ if file:
             Q_col = st.sidebar.selectbox("Production column",list(df.columns),index=0)
             date = st.sidebar.selectbox("Date column",list(df.columns),index=1)
             freq = st.sidebar.selectbox("data Frequency", ["Daily", "Monthly", "Yearly"])
+            # parse data colmn
+            df[date] = pd.to_datetime(df[date])
             # the final df of the well
             df = df[[date,Q_col]]
             df[Q_col] = df[Q_col].astype(float)
