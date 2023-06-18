@@ -36,8 +36,8 @@ if file:
             df[date] = pd.to_datetime(df[date])
             # the final df of the well
             df = df[df[col] == well]
-            df[Q_col] =  df[Q_col].str.replace({",":""})
-            df[Q_col] = df[Q_col].astype(float)
+            # df[Q_col] =  df[Q_col].str.replace({",":""})
+            df[Q_col] = df[Q_col].replace(',', '', regex=True).astype(float)
             arps_model = ARPS(df,Q_col,date)
             # show data
             """sample of data"""
@@ -53,8 +53,8 @@ if file:
             df[date] = pd.to_datetime(df[date])
             # the final df of the well
             df = df[[date,Q_col]]
-            df[Q_col] =  df[Q_col].str.replace({",":""})
-            df[Q_col] = df[Q_col].astype(float)
+            # df[Q_col] =  df[Q_col].str.replace({",":""})
+            df[Q_col] = df[Q_col].replace(',', '', regex=True).astype(float)
             arps_model = ARPS(df, Q_col, date)
             # show data
             """sample of data"""
