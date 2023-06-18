@@ -17,7 +17,7 @@ file = st.sidebar.file_uploader("Upload Data file",type=["CSV"])
 
 if file:
     try:
-        @st.cache
+        @st.cache_data
         def upload_file(file):
             df = pd.read_csv( file , parse_dates=True )
             return df
