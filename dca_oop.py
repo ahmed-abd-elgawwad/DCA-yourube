@@ -63,6 +63,15 @@ class SingleModel:
         di = di / self.T_max
         parameters = [ qi, di, b, RMSE, model ]
         return parameters, q_fitted
+    
+def hyperbolic(t, qi, di, b):
+            return qi / (np.abs((1 + b * di * t)) ** (1 / b))
+    
+def exposential(t, qi, di):
+        return qi * np.exp(-di * t)
+    
+def harmonic(t, qi, di):
+        return qi / (1 + di * t)
 
 # ------------------------- start the whole arps model ------------------------------
 class ARPS:
@@ -80,6 +89,7 @@ class ARPS:
         self.df = dataframe[[date_column,production_col]]
         self.Q = 0
         self.T =0
+        self.dd = dataframe[[date_column,production_col]]
         self.ex_params = None
         self.hp_params = None
         self.Hr_params = None
@@ -106,27 +116,48 @@ class ARPS:
             maxi = result[self.q + '_rol_Av'].max()
             maxi_index = (result[result[self.q + '_rol_Av'] == maxi].index.values)[0]
             result = result.iloc[maxi_index:, :].reset_index(drop=True)
+            
+        self.Q = result[self.q + '_rol_Av']
         self.df = result
         return self.df
 
-    def prepocess_date_col(self,frequency = "Daily"):
+    def prepocess_date_col(self,frequency = "Daily",df=None):
         """
         Convert the date column into number so that it can be used for fitting
         frequency : the frequency of the production data taken [ Daily , Monthly , Yearly ]
         """
         self.df[self.date] = pd.to_datetime(self.df[self.date])
-        self.df["Time [{frequency}]"] = (self.df[self.date] - self.df[self.date].iloc[0])
+        self.df[f"Time [{frequency}]"] = (self.df[self.date] - self.df[self.date].iloc[0])
         if frequency == "Daily":
-            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"] / np.timedelta64(1, 'D')
-            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"].astype(int)
+            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"] / np.timedelta64(1, 'D')
+            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"].astype(int)
         elif frequency == "Monthly":
-            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"] / np.timedelta64(1, 'M')
-            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"].astype(int)
+            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"] / np.timedelta64(1, 'M')
+            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"].astype(int)
         elif frequency == "Yearly":
-            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"] / np.timedelta64(1, 'Y')
-            self.df["Time [{frequency}]"] = self.df["Time [{frequency}]"].astype(int)
-        self.T = self.df["Time [{frequency}]"]
+            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"] / np.timedelta64(1, 'Y')
+            self.df[f"Time [{frequency}]"] = self.df[f"Time [{frequency}]"].astype(int)
+        self.T = self.df[f"Time [{frequency}]"]
         self.Q = self.df[self.q + '_rol_Av']
+        # the separation time
+        self.last_time = self.T.iloc[-1]
+        
+        if df is not None:
+            df[self.date] = pd.to_datetime(df[self.date])
+            df[f"Time [{frequency}]"] = (df[self.date] - df[self.date].iloc[0])
+            if frequency == "Daily":
+                df[f"Time [{frequency}]"] = df[f"Time [{frequency}]"] / np.timedelta64(1, 'D')
+                df[f"Time [{frequency}]"] = df[f"Time [{frequency}]"].astype(int)
+            elif frequency == "Monthly":
+                df[f"Time [{frequency}]"] = df[f"Time [{frequency}]"] / np.timedelta64(1, 'M')
+                df[f"Time [{frequency}]"] = df[f"Time [{frequency}]"].astype(int)
+            elif frequency == "Yearly":
+                df[f"Time [{frequency}]"] = df[f"Time [{frequency}]"] / np.timedelta64(1, 'Y')
+                df[f"Time [{frequency}]"] = df[f"Time [{frequency}]"].astype(int)
+                
+            return df[f"Time [{frequency}]"] , df[self.q]
+          
+            
 
     def fit_exponential(self):
          """
@@ -166,18 +197,95 @@ class ARPS:
         hp , qhp= self.fit_hyperbolic()
         hr , qhr = self.fit_harmonic()
         all_params = [ex, hp, hr]
-        data_info = {
+        data_info = pd.DataFrame({
             "Model": [i[-1] for i in all_params],
             "Qi": [i[0] for i in all_params],
             "Di": [i[1] for i in all_params],
             "b": [i[2] for i in all_params],
             "Normalized RMSE": [i[3] for i in all_params],
-        }
+        })
         Qs = pd.DataFrame({
             "Time": self.T,
             "Original_Smoothed": self.Q,
             "Exponential": qex,
             "Hyperbolic": qhp,
             "Harmonic": qhr
-        })
-        return data_info , Qs
+        }).set_index("Time",drop=True)
+        
+        self.model_params = data_info
+        best_model = data_info[data_info["Normalized RMSE"] == data_info["Normalized RMSE"].min() ]["Model"]
+        return data_info , Qs , best_model
+    
+    def forecast_hyperbolic(self,Q_limit):
+        t= self.T.iloc[-1]
+        qi , d  , b= self.model_params["Qi"].iloc[1],  self.model_params["Di"].iloc[1] , self.model_params["b"].iloc[1]
+        qs = []
+        ts = []
+        while True:
+            ts.append(t)
+            q = hyperbolic(t,qi,d,b)
+            qs.append(q)
+            
+            if q < Q_limit:
+                break
+            t+= 5
+        return ts,qs
+               
+    def forecast_harmonic(self,Q_limit):
+        t= self.T.iloc[-1]
+        qi , d = self.model_params["Qi"].iloc[2] ,  self.model_params["Di"].iloc[2]
+        qs = []
+        ts = []
+        while True:
+            ts.append(t)
+            q = harmonic(t,qi,d)
+            qs.append(q)
+            
+            if q < Q_limit:
+                break
+            t+= 5
+        return ts,qs
+            
+    def forecast_exponential(self,Q_limit):
+        t= self.T.iloc[-1]
+        qi, d = self.model_params["Qi"].iloc[0] , self.model_params["Di"].iloc[0]
+        qs = []
+        ts = []
+        while True:
+            ts.append(t)
+            q = exposential(t,qi,d)
+            qs.append(q)
+            
+            if q < Q_limit:
+                break
+            t+= 5
+        return ts,qs
+        
+    def forecast(self,best_model,Q_limit):
+        q_cum_last = [self.dd[self.q].cumsum().iloc[-1]]
+        v_line= self.T.iloc[-1]
+        if best_model =="ex":
+            ts, qs =  self.forecast_exponential(Q_limit)
+            q_cum_last.extend(qs)
+            q_cum = np.cumsum(q_cum_last)
+        elif best_model == "hr":
+            ts, qs =  self.forecast_harmonic(Q_limit)
+            q_cum_last.extend(qs)
+            q_cum = np.cumsum(q_cum_last)
+        elif best_model =="hp":
+            ts, qs =  self.forecast_hyperbolic(Q_limit)
+            q_cum_last.extend(qs)
+            q_cum = np.cumsum(q_cum_last)
+            
+        return ts, qs, q_cum , v_line
+    
+    
+    def total_cum_production(self,freq,ts,qs):
+        date , q = self.prepocess_date_col(frequency=freq, df = self.dd)
+        v_line= date.iloc[-1]
+        date._append(pd.Series(ts[1:]))
+        q._append(pd.Series(qs[1:]))
+        Q_cum = q.cumsum()
+        
+        return date , Q_cum , v_line, 
+    
