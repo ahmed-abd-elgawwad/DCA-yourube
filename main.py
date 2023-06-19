@@ -16,7 +16,7 @@ file = st.sidebar.file_uploader("Upload Data file",type=["CSV"])
 # check if the file is uploaded
 
 if file:
-    try:
+    # try:
         @st.cache_data
         def upload_file(file):
             df = pd.read_csv( file , parse_dates=True )
@@ -81,5 +81,5 @@ if file:
         """#### Models parameters"""
         st.table(parameters)
         st.success('Made with love'+'\u2764\ufe0f'+' Ahmed Elsayed')
-    except:
-        st.error("Make sure you choosed the right parameters")
+    # except:
+    #     st.error("Make sure you choosed the right parameters")
